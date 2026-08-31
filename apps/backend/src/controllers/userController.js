@@ -1,7 +1,9 @@
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-const userModel = require("../models/userModel");
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+import userModel from "../models/userModel";
 const salt = process.env.SALT;
+
+
 
 const signupController = async (req, res) => {
   const { name, email, password } = req.body;
@@ -68,4 +70,4 @@ const loginController = async (req, res) => {
   }
 };
 
-module.exports = { signupController, loginController };
+export { signupController, loginController };

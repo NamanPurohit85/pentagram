@@ -1,10 +1,9 @@
-require("dotenv").config;
-const express = require("express");
+import connectDB from "./src/config/db";
+import userRoute from "./src/routes/userRoute";
+import express from "express";
 const app = express();
 app.use(express.json());
 const port = process.env.PORT;
-
-const connectDB = require("./src/config/db");
 
 const start = async () => {
   try {
@@ -18,5 +17,4 @@ const start = async () => {
 };
 start();
 
-const userRoute = require("./src/routes/userRoute");
 app.use("/user", userRoute);
