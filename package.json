@@ -7,8 +7,11 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.0.4",
     "oxlint": "^1.75.0",
+    "tailwindcss": "^4.3.3",
     "vite": "^8.2.0"
   },
   "dependencies": {
