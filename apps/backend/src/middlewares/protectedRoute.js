@@ -14,7 +14,7 @@ const checkToken = (req, res, next) => {
     next();
   } catch (error) {
     return res
-      .status(403)
+      .status(401)
       .json({ success: false, message: "Invalid or expired token." });
   }
 };

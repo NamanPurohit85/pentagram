@@ -10,13 +10,13 @@ const blogSchema = new mongoose.Schema(
     title: {
       type: String,
       required: true,
-      minLength: 3,
+      minLength: 1,
       maxLength: 30,
     },
     description: {
       type: String,
       required: true,
-      minLength: 10,
+      minLength: 1,
       maxLength: 200,
     },
     likeCount: {
