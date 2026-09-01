@@ -1,9 +1,8 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel";
-const salt = process.env.SALT;
-
-
+import { loginSchema, signupSchema } from "./userValidate";
+const salt = Number(process.env.SALT);
 
 const signupController = async (req, res) => {
   const { name, email, password } = req.body;
@@ -11,6 +10,13 @@ const signupController = async (req, res) => {
   try {
     if (!name || !email || !password) {
       return res.status(401).end("All fields are required");
+    }
+    const { error } = signupSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
     }
 
     let user = await userModel.findOne({ email });
@@ -33,11 +39,12 @@ const signupController = async (req, res) => {
       httpOnly: true,
     });
     return res.status(201).json({
+      success: true,
       message: "Signup successful",
       user: { id: user._id, name: user.name },
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -46,6 +53,14 @@ const loginController = async (req, res) => {
   try {
     if (!email || !password) {
       return res.status(401).end("All fields are required");
+    }
+
+    const { error } = loginSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({
+        success: false,
+        message: error.details[0].message,
+      });
     }
 
     let user = await userModel.findOne({ email });
@@ -62,12 +77,20 @@ const loginController = async (req, res) => {
       httpOnly: true,
     });
     return res.status(201).json({
+      success: true,
       message: "Login successful",
       user: { id: user._id, name: user.name },
     });
   } catch (error) {
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 };
 
-export { signupController, loginController };
+const logoutController = (req, res) => {
+  res.clearCookie("token", { httpOnly: true });
+  return res
+    .status(200)
+    .json({ success: true, message: "Logged out successfully" });
+};
+
+export { signupController, loginController, logoutController };
