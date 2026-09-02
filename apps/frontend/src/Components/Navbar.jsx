@@ -34,11 +34,11 @@ const Navbar = () => {
         
         {/* Logo Section */}
         <div className="flex items-center gap-3 shrink-0">
-          <div className="w-9 h-9 bg-[#4441c4] rounded-xl flex items-center justify-center text-white shadow-sm">
+          <div className="w-9 h-9  rounded-xl flex items-center justify-center text-white shadow-sm">
             {/* Pentagram Logo SVG */}
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <img src="/Fav1.png" alt="Pentagram Logo" className="w-full h-full object-contain" />
               <path d="M12 2L2 9.5L5.8 21H18.2L22 9.5L12 2Z" />
-            </svg>
+            
           </div>
           <h2 className="text-xl font-bold tracking-tight hidden sm:block dark:text-white">Pentagram</h2>
         </div>
