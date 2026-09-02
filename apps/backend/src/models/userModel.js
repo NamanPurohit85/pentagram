@@ -5,15 +5,28 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
+      minlength: 3,
+      maxlength: 20,
     },
     email: {
       type: String,
       required: true,
       unique: true,
+      minlength: 11,
+      maxlength: 30,
+      validate: {
+        validator: function (v) {
+          return v.endsWith("@gmail.com");
+        },
+        message: (props) =>
+          `${props.value} must be a valid @gmail.com address.`,
+      },
     },
     password: {
       type: String,
       required: true,
+      minlength: 8,
+      maxlength: 60,
     },
   },
   { timestamps: true },
