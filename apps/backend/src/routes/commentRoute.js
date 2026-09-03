@@ -1,7 +1,10 @@
 import express from "express";
 const commentRoute = express.Router();
-import {} from "../controllers/commentController";
-import checkToken from "../middlewares/protectedRoute";
+import { createCommentController, getCommentsController, deleteCommentController } from "../controllers/commentController.js";
+import checkToken from "../middlewares/protectedRoute.js";
 
-commentRoute.post("/comment", checkToken, );
+commentRoute.post("/:blogId", checkToken, createCommentController);
+commentRoute.get("/:blogId", checkToken, getCommentsController);
+commentRoute.delete("/:id", checkToken, deleteCommentController);
+
 export default commentRoute;

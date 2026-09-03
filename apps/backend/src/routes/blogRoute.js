@@ -5,13 +5,16 @@ import {
   getAllBlogController,
   updateBlogController,
   deleteBlogController,
-} from "../controllers/blogController";
+  likeBlogController,
+} from "../controllers/blogController.js";
 
-import checkToken from "../middlewares/protectedRoute";
+import checkToken from "../middlewares/protectedRoute.js";
+import upload from "../middlewares/multer.js";
 
-blogRoute.post("/create", checkToken, createBlogController);
+blogRoute.post("/create", checkToken, upload.single("image"), createBlogController);
 blogRoute.get("/allblog", checkToken, getAllBlogController);
 blogRoute.post("/updateblog/:id", checkToken, updateBlogController);
 blogRoute.get("/delete/:id", checkToken, deleteBlogController);
+blogRoute.post("/like/:id", checkToken, likeBlogController);
 
 export default blogRoute;

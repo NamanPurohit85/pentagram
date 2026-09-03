@@ -1,60 +1,89 @@
-import React from 'react';
+import React, { useState, useContext } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
+import api from '../api';
+import { AuthContext } from '../AuthContext';
 
-const Login = () => {
+const LoginPage = () => {
+  const [formData, setFormData] = useState({ email: '', password: '' });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
+
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.post('/user/login', formData);
+      if (res.data.success) {
+        login(res.data.user);
+        navigate('/');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || err.response?.data || 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col font-normal text-base text-[#1c1b1b] bg-[#F0F2F5] antialiased">
-      {/* Main Container for Auth Flow */}
-      <main className="flex-grow flex items-center justify-center p-4 relative z-10 -mt-10 md:-mt-20">
-        {/* Auth Card */}
-        <div className="w-full max-w-[440px] bg-[#ffffff] rounded-xl p-10 shadow-[0_12px_40px_rgba(0,0,0,0.08)] transform transition-transform hover:-translate-y-0.5 duration-200">
+    <div className="min-h-screen flex items-center justify-center p-4 bg-canvas text-primary transition-colors duration-300">
+      <motion.main 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+        className="w-full max-w-[440px] flex flex-col items-center justify-center"
+      >
+        <div className="w-full bg-surface rounded-2xl shadow-2xl border border-divider p-[40px] flex flex-col relative overflow-hidden transition-colors duration-300">
           
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <h1 className="text-[32px] leading-[1.2] tracking-tight font-extrabold text-[#4441c4] hidden md:block">Pentagram</h1>
-              <h1 className="text-[24px] leading-[1.2] tracking-tight font-extrabold text-[#4441c4] md:hidden">Pentagram</h1>
-            </div>
-            <h2 className="text-[20px] leading-[1.4] font-semibold text-[#1c1b1b] mb-1">Welcome back</h2>
-            <p className="text-[14px] leading-[1.5] text-[#464554]">Log in to continue to Pentagram</p>
+          <div className="flex flex-col items-center mb-8 text-center">
+            <h1 className="text-4xl font-black font-serif text-primary mb-2">Pentagram</h1>
+            <h2 className="text-xl font-semibold text-primary mb-1">Welcome back</h2>
+            <p className="text-sm text-secondary">Enter your details to access your account</p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
-            <div>
-              <label className="block text-[12px] leading-[1] tracking-[0.05em] font-semibold text-[#464554] mb-2 uppercase" htmlFor="email">Email</label>
-              <input className="w-full border border-[#777585] rounded-lg px-4 py-3 bg-[#ffffff] text-[#1c1b1b] focus:border-[#4441c4] focus:ring-1 focus:ring-[#4441c4] outline-none transition-colors duration-200" id="email" name="email" placeholder="Enter your email" required type="email" />
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 w-full">
+            {error && <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/50 text-red-500 text-sm text-center font-bold">{error}</div>}
+            
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-secondary uppercase tracking-wider">Email</label>
+              <input value={formData.email} onChange={handleChange} className="w-full h-12 px-4 rounded-xl border border-divider bg-canvas text-primary placeholder:text-secondary focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all duration-300" name="email" placeholder="name@example.com" required type="email" />
             </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="block text-[12px] leading-[1] tracking-[0.05em] font-semibold text-[#464554] uppercase" htmlFor="password">Password</label>
-                <a className="text-[14px] leading-[1.5] text-[#4441c4] hover:text-[#5d5cde] transition-colors duration-200" href="#">Forgot password?</a>
-              </div>
-              <input className="w-full border border-[#777585] rounded-lg px-4 py-3 bg-[#ffffff] text-[#1c1b1b] focus:border-[#4441c4] focus:ring-1 focus:ring-[#4441c4] outline-none transition-colors duration-200" id="password" name="password" placeholder="Enter your password" required type="password" />
+
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label className="text-xs font-bold text-secondary uppercase tracking-wider flex justify-between">
+                <span>Password</span>
+                <a href="#" className="text-accent hover:underline transition-all normal-case">Forgot password?</a>
+              </label>
+              <input value={formData.password} onChange={handleChange} className="w-full h-12 px-4 rounded-xl border border-divider bg-canvas text-primary placeholder:text-secondary focus:border-accent focus:ring-1 focus:ring-accent outline-none transition-all duration-300" name="password" placeholder="Enter your password" required type="password" />
             </div>
-            <button className="w-full bg-[#4441c4] text-[#ffffff] rounded-lg py-3 text-[16px] leading-tight font-semibold flex justify-center items-center gap-2 hover:bg-[#5d5cde] transition-all duration-200 shadow-[0_4px_14px_rgba(68,65,196,0.3)] hover:shadow-[0_6px_20px_rgba(68,65,196,0.4)] cursor-pointer" type="submit">
-              Log In
-            </button>
+
+            <motion.button 
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full h-12 flex items-center justify-center bg-accent text-white text-lg font-bold rounded-xl shadow-lg hover:opacity-90 transition-all duration-300 disabled:opacity-70 cursor-pointer" 
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : 'Sign In'}
+            </motion.button>
           </form>
 
-
-
-          
-
-          {/* Footer text */}
-          <p className="text-center mt-6 text-[14px] leading-[1.5] text-[#464554]">
-            Don't have an account? <a className="text-[#4441c4] font-semibold hover:text-[#5d5cde] transition-colors duration-200" href="#">Sign up</a>
-          </p>
+          <div className="mt-8 text-center">
+            <p className="text-sm text-secondary">
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-accent font-bold hover:underline transition-all duration-200">Sign up</Link>
+            </p>
+          </div>
         </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-transparent w-full bottom-0 flex flex-col md:flex-row justify-center items-center gap-4 py-10 px-6 text-[14px] leading-[1.5] text-[#464554] z-0 relative">
-        <div className="mt-1 md:mt-0 opacity-70">
-          © 2024 Pentagram. All rights reserved.
-        </div>
-      </footer>
+      </motion.main>
     </div>
   );
 };
 
-export default Login;
+export default LoginPage;

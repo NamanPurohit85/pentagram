@@ -19,10 +19,20 @@ const blogSchema = new mongoose.Schema(
       minLength: 1,
       maxLength: 200,
     },
+    image: {
+      type: String,
+      default: "",
+    },
     likeCount: {
       type: Number,
       default: 0,
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
     commentCount: {
       type: Number,
       default: 0,
