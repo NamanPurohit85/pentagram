@@ -28,6 +28,26 @@ const userSchema = new mongoose.Schema(
       minlength: 8,
       maxlength: 60,
     },
+    profilePic: {
+      type: String,
+      default: "https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y",
+    },
+    bio: {
+      type: String,
+      default: "",
+    },
+    followers: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
+    following: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "user",
+      },
+    ],
   },
   { timestamps: true },
 );

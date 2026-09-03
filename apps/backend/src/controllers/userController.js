@@ -1,7 +1,7 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel";
-import { loginSchema, signupSchema } from "./userValidate";
+import { loginSchema, signupSchema } from "../validators/userValidate.js";
 const salt = Number(process.env.SALT);
 
 const signupController = async (req, res) => {
@@ -93,4 +93,103 @@ const logoutController = (req, res) => {
     .json({ success: true, message: "Logged out successfully" });
 };
 
-export { signupController, loginController, logoutController };
+const followUserController = async (req, res) => {
+  try {
+    const targetUserId = req.params.id;
+    const currentUserId = req.userId;
+
+    if (targetUserId === currentUserId) {
+      return res.status(400).json({ success: false, message: "You cannot follow yourself" });
+    }
+
+    const targetUser = await userModel.findById(targetUserId);
+    const currentUser = await userModel.findById(currentUserId);
+
+    if (!targetUser || !currentUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (!currentUser.following.includes(targetUserId)) {
+      await currentUser.updateOne({ $push: { following: targetUserId } });
+      await targetUser.updateOne({ $push: { followers: currentUserId } });
+      return res.status(200).json({ success: true, message: "User followed successfully" });
+    } else {
+      return res.status(400).json({ success: false, message: "You already follow this user" });
+    }
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const unfollowUserController = async (req, res) => {
+  try {
+    const targetUserId = req.params.id;
+    const currentUserId = req.userId;
+
+    if (targetUserId === currentUserId) {
+      return res.status(400).json({ success: false, message: "You cannot unfollow yourself" });
+    }
+
+    const targetUser = await userModel.findById(targetUserId);
+    const currentUser = await userModel.findById(currentUserId);
+
+    if (!targetUser || !currentUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (currentUser.following.includes(targetUserId)) {
+      await currentUser.updateOne({ $pull: { following: targetUserId } });
+      await targetUser.updateOne({ $pull: { followers: currentUserId } });
+      return res.status(200).json({ success: true, message: "User unfollowed successfully" });
+    } else {
+      return res.status(400).json({ success: false, message: "You do not follow this user" });
+    }
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const getUserProfileController = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const user = await userModel.findById(id).select("-password").populate("followers", "name profilePic").populate("following", "name profilePic");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const getAllUsersController = async (req, res) => {
+  try {
+    const users = await userModel.find().select("-password");
+    return res.status(200).json({ success: true, users });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const updateUserProfileController = async (req, res) => {
+  try {
+    const { name, bio, profilePic } = req.body;
+    const userId = req.userId;
+
+    const updatedUser = await userModel.findByIdAndUpdate(
+      userId,
+      { $set: { name, bio, profilePic } },
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!updatedUser) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    return res.status(200).json({ success: true, message: "Profile updated successfully", user: updatedUser });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export { signupController, loginController, logoutController, followUserController, unfollowUserController, getUserProfileController, getAllUsersController, updateUserProfileController };
