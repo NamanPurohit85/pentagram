@@ -1,42 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-canvas: var(--app-canvas);
-  --color-surface: var(--app-surface);
-  --color-divider: var(--app-divider);
-  --color-primary: var(--app-primary);
-  --color-secondary: var(--app-secondary);
-  --color-accent: var(--app-accent);
+  --color-primary: #000000;
+  --color-primary-hover: #333333;
 }
 
 @layer base {
-  :root {
-    --app-canvas: #FAF9F5;
-    --app-surface: #FFFFFF;
-    --app-divider: #E6E4DC;
-    --app-primary: #1C1917;
-    --app-secondary: #78716C;
-    --app-accent: #C25E38;
-  }
-
-  .dark {
-    --app-canvas: #121110;
-    --app-surface: #1A1918;
-    --app-divider: #2E2C2A;
-    --app-primary: #F5F4F0;
-    --app-secondary: #9E9B96;
-    --app-accent: #C5A059;
-  }
-
   body {
-    background-color: var(--app-canvas);
-    color: var(--app-primary);
-    /* Clean, low-contrast sans-serif for body, we'll use serif for headings in components */
-    font-family: "Inter", "Roboto", "Helvetica Neue", sans-serif;
-  }
-
-  /* Smooth transition for theme toggle */
-  body, main, div, header, nav, section, article {
-    transition: background-color 0.2s ease-out, border-color 0.2s ease-out;
+    background-color: #fafafa;
+    color: #111111;
+    font-family: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+    -webkit-font-smoothing: antialiased;
   }
 }

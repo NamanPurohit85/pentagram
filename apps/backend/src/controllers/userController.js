@@ -1,7 +1,9 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import userModel from "../models/userModel";
+import userModel from "../models/userModel.js";
 import { loginSchema, signupSchema } from "../validators/userValidate.js";
+import cloudinary from "../config/cloudinary.js";
+import streamifier from "streamifier";
 const salt = Number(process.env.SALT);
 
 const signupController = async (req, res) => {
@@ -9,7 +11,7 @@ const signupController = async (req, res) => {
 
   try {
     if (!name || !email || !password) {
-      return res.status(401).end("All fields are required");
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
     const { error } = signupSchema.validate(req.body);
     if (error) {
@@ -21,7 +23,7 @@ const signupController = async (req, res) => {
 
     let user = await userModel.findOne({ email });
     if (user) {
-      return res.status(409).end("Email already exist");
+      return res.status(409).json({ success: false, message: "Email already exists" });
     }
 
     let hashPassword = await bcrypt.hash(password, salt);
@@ -52,7 +54,7 @@ const loginController = async (req, res) => {
   const { email, password } = req.body;
   try {
     if (!email || !password) {
-      return res.status(401).end("All fields are required");
+      return res.status(400).json({ success: false, message: "All fields are required" });
     }
 
     const { error } = loginSchema.validate(req.body);
@@ -65,7 +67,7 @@ const loginController = async (req, res) => {
 
     let user = await userModel.findOne({ email });
     if (!user) {
-      return res.status(409).end("Invalid Credentials");
+      return res.status(401).json({ success: false, message: "Invalid Credentials" });
     }
 
     const payLoad = {
@@ -173,12 +175,34 @@ const getAllUsersController = async (req, res) => {
 
 const updateUserProfileController = async (req, res) => {
   try {
-    const { name, bio, profilePic } = req.body;
+    const { name, bio } = req.body;
     const userId = req.userId;
+
+    let updateData = { name, bio };
+
+    if (req.file) {
+      const uploadFromBuffer = (req) => {
+        return new Promise((resolve, reject) => {
+          let cld_upload_stream = cloudinary.uploader.upload_stream(
+            { folder: "pentagram_profiles" },
+            (error, result) => {
+              if (result) {
+                resolve(result);
+              } else {
+                reject(error);
+              }
+            }
+          );
+          streamifier.createReadStream(req.file.buffer).pipe(cld_upload_stream);
+        });
+      };
+      const result = await uploadFromBuffer(req);
+      updateData.profilePic = result.secure_url;
+    }
 
     const updatedUser = await userModel.findByIdAndUpdate(
       userId,
-      { $set: { name, bio, profilePic } },
+      { $set: updateData },
       { new: true, runValidators: true }
     ).select("-password");
 
@@ -192,4 +216,17 @@ const updateUserProfileController = async (req, res) => {
   }
 };
 
-export { signupController, loginController, logoutController, followUserController, unfollowUserController, getUserProfileController, getAllUsersController, updateUserProfileController };
+const getMeController = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const user = await userModel.findById(userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    return res.status(200).json({ success: true, user });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+export { signupController, loginController, logoutController, followUserController, unfollowUserController, getUserProfileController, getAllUsersController, updateUserProfileController, getMeController };

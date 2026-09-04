@@ -12,14 +12,17 @@ import cors from "cors";
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(cookieParser());
-const port = process.env.PORT || 5000;
+const port = process.env.PORT;
+if (!port) {
+  throw new Error("PORT is not defined in environment variables");
+}
 
 import messageRoute from "./src/routes/messageRoute.js";
 
-app.use("/user", userRoute);
-app.use("/blog", blogRoute);
-app.use("/comment", commentRoute);
-app.use("/message", messageRoute);
+app.use("/api/auth", userRoute);
+app.use("/api/posts", blogRoute);
+app.use("/api/posts/:postId/comments", commentRoute);
+app.use("/api/message", messageRoute);
 
 const start = async () => {
   try {

@@ -4,9 +4,13 @@ import SignUp from './Components/SignUp';
 import Login from './Components/LoginPage';
 import HomePage from './Pages/HomePage';
 import ProfilePage from './Pages/ProfilePage';
-import ExplorePage from './Pages/ExplorePage';
+import PostDetail from './Pages/PostDetail';
+import CreatePost from './Pages/CreatePost';
+import EditPost from './Pages/EditPost';
+import NotFound from './Pages/NotFound';
 import MessagesPage from './Pages/MessagesPage';
-import BookmarksPage from './Pages/BookmarksPage';
+import LandingPage from './Pages/LandingPage';
+import Layout from './Components/Layout';
 import { AuthContext } from './AuthContext';
 
 const App = () => {
@@ -18,13 +22,19 @@ const App = () => {
 
   return (
     <Routes>
-      <Route path="/" element={user ? <HomePage /> : <Navigate to="/login" />} />
       <Route path="/signup" element={!user ? <SignUp /> : <Navigate to="/" />} />
       <Route path="/login" element={!user ? <Login /> : <Navigate to="/" />} />
-      <Route path="/profile/:id" element={user ? <ProfilePage /> : <Navigate to="/login" />} />
-      <Route path="/explore" element={user ? <ExplorePage /> : <Navigate to="/login" />} />
-      <Route path="/messages" element={user ? <MessagesPage /> : <Navigate to="/login" />} />
-      <Route path="/bookmarks" element={user ? <BookmarksPage /> : <Navigate to="/login" />} />
+      
+      {/* Pages wrapped in the Layout component */}
+      <Route path="/" element={user ? <Layout><HomePage /></Layout> : <LandingPage />} />
+      <Route path="/profile/:id" element={<Layout><ProfilePage /></Layout>} />
+      <Route path="/profile/me" element={user ? <Navigate to={`/profile/${user.id}`} state={{ edit: true }} /> : <Navigate to="/login" />} />
+      <Route path="/posts/new" element={user ? <Layout defaultExpanded={false}><CreatePost /></Layout> : <Navigate to="/login" />} />
+      <Route path="/posts/:id/edit" element={user ? <Layout defaultExpanded={false}><EditPost /></Layout> : <Navigate to="/login" />} />
+      <Route path="/messages" element={user ? <Layout><MessagesPage /></Layout> : <Navigate to="/login" />} />
+      <Route path="/posts/:id" element={<Layout><PostDetail /></Layout>} />
+      
+      <Route path="*" element={<Layout><NotFound /></Layout>} />
     </Routes>
   );
 }

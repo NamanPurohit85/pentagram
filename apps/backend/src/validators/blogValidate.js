@@ -7,15 +7,15 @@ const createBlogSchema = Joi.object({
     "any.required": "Title is required.",
   }),
 
-  description: Joi.string().min(1).max(200).required().messages({
-    "string.min": "Description must be at least 10 characters long.",
-    "string.max": "Description cannot exceed 200 characters.",
-    "any.required": "Description is required.",
+  content: Joi.string().min(1).max(200).required().messages({
+    "string.min": "Content must be at least 1 character long.",
+    "string.max": "Content cannot exceed 200 characters.",
+    "any.required": "Content is required.",
   }),
 });
 
 const updateBlogSchema = Joi.object({
   title: Joi.string().min(1).max(30),
-  description: Joi.string().min(1).max(200),
+  content: Joi.string().min(1).max(200),
 });
 export { createBlogSchema, updateBlogSchema };

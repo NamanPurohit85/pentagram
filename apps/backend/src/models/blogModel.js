@@ -13,7 +13,7 @@ const blogSchema = new mongoose.Schema(
       minLength: 1,
       maxLength: 30,
     },
-    description: {
+    content: {
       type: String,
       required: true,
       minLength: 1,
@@ -23,23 +23,19 @@ const blogSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    likeCount: {
+    likesCount: {
       type: Number,
       default: 0,
     },
-    likes: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "user",
-      },
-    ],
-    commentCount: {
+    commentsCount: {
       type: Number,
       default: 0,
     },
   },
   { timestamps: true },
 );
+
+blogSchema.index({ author: 1, createdAt: -1 });
 
 const blogModel = mongoose.model("blog", blogSchema);
 export default blogModel;

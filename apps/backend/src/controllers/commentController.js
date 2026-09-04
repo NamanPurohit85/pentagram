@@ -4,31 +4,29 @@ import { io } from "../config/socket.js";
 
 const createCommentController = async (req, res) => {
   try {
-    const { description } = req.body;
-    const blogId = req.params.blogId;
+    const { text } = req.body;
+    const postId = req.params.postId;
 
-    if (!description) {
-      return res.status(400).json({ message: "Description is required" });
+    if (!text) {
+      return res.status(400).json({ message: "Text is required" });
     }
 
-    if (!blogId) {
-      return res.status(400).json({ message: "Blog ID is required" });
+    if (!postId) {
+      return res.status(400).json({ message: "Post ID is required" });
     }
 
     const authorId = req.userId;
 
     const newComment = await commentModel.create({
       author: authorId,
-      blogId: blogId,
-      description,
+      post: postId,
+      text,
     });
 
-    // Optionally increment commentCount in blogModel
-    const updatedBlog = await blogModel.findByIdAndUpdate(blogId, { $inc: { commentCount: 1 } }, { new: true });
+    const updatedBlog = await blogModel.findByIdAndUpdate(postId, { $inc: { commentsCount: 1 } }, { new: true });
 
-    // Populate author for socket broadcast
     const populatedComment = await commentModel.findById(newComment._id).populate("author", "name profilePic");
-    io.emit("newComment", { blogId, comment: populatedComment, commentCount: updatedBlog.commentCount });
+    io.emit("newComment", { blogId: postId, comment: populatedComment, commentsCount: updatedBlog.commentsCount });
 
     res.status(201).json({
       success: true,
@@ -46,14 +44,14 @@ const createCommentController = async (req, res) => {
 
 const getCommentsController = async (req, res) => {
   try {
-    const blogId = req.params.blogId;
+    const postId = req.params.postId;
     
-    if (!blogId) {
-      return res.status(400).json({ message: "Blog ID is required" });
+    if (!postId) {
+      return res.status(400).json({ message: "Post ID is required" });
     }
 
     const comments = await commentModel
-      .find({ blogId })
+      .find({ post: postId })
       .populate("author", "name profilePic")
       .sort({ createdAt: -1 });
 
@@ -67,14 +65,14 @@ const getCommentsController = async (req, res) => {
 
 const deleteCommentController = async (req, res) => {
   try {
-    const id = req.params.id;
+    const commentId = req.params.commentId;
 
-    if (!id) {
+    if (!commentId) {
       return res.status(400).json({ message: "Enter ID for delete" });
     }
 
     const comment = await commentModel.findOneAndDelete({
-      _id: id,
+      _id: commentId,
       author: req.userId,
     });
 
@@ -84,8 +82,7 @@ const deleteCommentController = async (req, res) => {
       });
     }
 
-    // Decrement comment count
-    await blogModel.findByIdAndUpdate(comment.blogId, { $inc: { commentCount: -1 } });
+    await blogModel.findByIdAndUpdate(comment.post, { $inc: { commentsCount: -1 } });
 
     return res.status(200).json({ success: true, message: "Deleted successfully", comment });
   } catch (error) {

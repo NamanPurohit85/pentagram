@@ -22,7 +22,7 @@ const SignUp = () => {
     setLoading(true);
     setError('');
     try {
-      const res = await api.post('/user/signup', {
+      const res = await api.post('/auth/signup', {
         name: formData.name,
         email: formData.email,
         password: formData.password
@@ -49,7 +49,7 @@ const SignUp = () => {
         <div className="w-full bg-surface rounded-2xl shadow-2xl border border-divider p-[40px] flex flex-col relative overflow-hidden transition-colors duration-300">
           
           <div className="flex flex-col items-center mb-8 text-center">
-            <h1 className="text-4xl font-black font-serif text-primary mb-2">Pentagram</h1>
+
             <h2 className="text-xl font-semibold text-primary mb-1">Create your account</h2>
             <p className="text-sm text-secondary">Join Pentagram and start sharing</p>
           </div>
@@ -80,7 +80,7 @@ const SignUp = () => {
             <motion.button 
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full h-12 flex items-center justify-center bg-accent text-white text-lg font-bold rounded-xl shadow-lg hover:opacity-90 transition-all duration-300 disabled:opacity-70 cursor-pointer" 
+              className="w-full h-12 flex items-center justify-center bg-black text-white text-lg font-bold rounded-xl shadow-lg hover:bg-gray-800 transition-all duration-300 disabled:opacity-70 cursor-pointer" 
               type="submit"
               disabled={loading}
             >

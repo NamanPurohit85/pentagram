@@ -1,4 +1,5 @@
 import blogModel from "../models/blogModel.js";
+import likeModel from "../models/likeModel.js";
 import { createBlogSchema, updateBlogSchema } from "../validators/blogValidate.js";
 import cloudinary from "../config/cloudinary.js";
 import streamifier from "streamifier";
@@ -6,8 +7,8 @@ import { io } from "../config/socket.js";
 
 const createBlogController = async (req, res) => {
   try {
-    const { title, description } = req.body;
-    if (!title || !description) {
+    const { title, content } = req.body;
+    if (!title || !content) {
       return res.status(400).json({ message: "All fields are required" });
     }
 
@@ -44,7 +45,7 @@ const createBlogController = async (req, res) => {
     const newBlog = await blogModel.create({
       author: authorId,
       title,
-      description,
+      content,
       image: imageUrl,
     });
 
@@ -64,15 +65,61 @@ const createBlogController = async (req, res) => {
 
 const getAllBlogController = async (req, res) => {
   try {
-    const allBlog = await blogModel.find().populate('author', 'name profilePic').sort({ createdAt: -1 });
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const allBlog = await blogModel.find({
+      title: { $nin: ["Post", "Untitled"] },
+      content: { $nin: ["", " "] }
+    })
+      .populate('author', 'name profilePic')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
     if (!allBlog) {
       return res.status(404).json({ message: "There is no BLog" });
     }
-    return res.status(200).json({ message: "All Blogs", Blog: allBlog });
+
+    let blogsWithLikes = allBlog;
+    if (req.userId) {
+      const userLikes = await likeModel.find({ user: req.userId });
+      const likedPostIds = userLikes.map(like => like.post.toString());
+      blogsWithLikes = allBlog.map(blog => ({
+        ...blog.toObject(),
+        isLikedLocally: likedPostIds.includes(blog._id.toString())
+      }));
+    }
+
+    return res.status(200).json({ message: "All Blogs", Blog: blogsWithLikes });
   } catch (error) {
     return res
       .status(500)
       .json({ message: "Cannot find blog", error: error.message });
+  }
+};
+
+const getSingleBlogController = async (req, res) => {
+  try {
+    const blog = await blogModel.findById(req.params.id).populate('author', 'name profilePic');
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+    return res.status(200).json({ success: true, blog });
+  } catch (error) {
+    return res.status(500).json({ message: "Cannot get blog", error: error.message });
+  }
+};
+
+const getUserBlogsController = async (req, res) => {
+  try {
+    const blogs = await blogModel.find({ author: req.params.userId })
+      .populate('author', 'name profilePic')
+      .sort({ createdAt: -1 });
+    return res.status(200).json({ success: true, blogs });
+  } catch (error) {
+    return res.status(500).json({ message: "Cannot get user blogs", error: error.message });
   }
 };
 
@@ -108,6 +155,7 @@ const updateBlogController = async (req, res) => {
       .json({ message: "Update failed", error: error.message });
   }
 };
+
 const deleteBlogController = async (req, res) => {
   try {
     const id = req.params.id;
@@ -144,24 +192,56 @@ const likeBlogController = async (req, res) => {
       return res.status(404).json({ message: "Blog not found" });
     }
 
-    const hasLiked = blog.likes.includes(userId);
-    if (hasLiked) {
-      blog.likes = blog.likes.filter(id => id.toString() !== userId.toString());
-      blog.likeCount = Math.max(0, blog.likeCount - 1);
-    } else {
-      blog.likes.push(userId);
-      blog.likeCount += 1;
+    const existingLike = await likeModel.findOne({ post: blogId, user: userId });
+    if (existingLike) {
+      return res.status(400).json({ message: "You already liked this post" });
     }
 
+    await likeModel.create({ post: blogId, user: userId });
+    blog.likesCount += 1;
     await blog.save();
-    
-    // Broadcast real-time update
-    io.emit("postLiked", { blogId, likes: blog.likes, likeCount: blog.likeCount });
-    
-    return res.status(200).json({ success: true, message: hasLiked ? "Unliked" : "Liked", likeCount: blog.likeCount, likes: blog.likes });
+
+    io.emit("postLiked", { blogId, likesCount: blog.likesCount });
+
+    return res.status(201).json({ success: true, message: "Liked", likesCount: blog.likesCount });
   } catch (error) {
     return res.status(500).json({ message: "Failed to like blog", error: error.message });
   }
 };
 
-export { createBlogController, getAllBlogController, updateBlogController, deleteBlogController, likeBlogController };
+const unlikeBlogController = async (req, res) => {
+  try {
+    const blogId = req.params.id;
+    const userId = req.userId;
+
+    const blog = await blogModel.findById(blogId);
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    const existingLike = await likeModel.findOneAndDelete({ post: blogId, user: userId });
+    if (!existingLike) {
+      return res.status(400).json({ message: "You haven't liked this post" });
+    }
+
+    blog.likesCount = Math.max(0, blog.likesCount - 1);
+    await blog.save();
+
+    io.emit("postLiked", { blogId, likesCount: blog.likesCount });
+
+    return res.status(200).json({ success: true, message: "Unliked", likesCount: blog.likesCount });
+  } catch (error) {
+    return res.status(500).json({ message: "Failed to unlike blog", error: error.message });
+  }
+};
+
+export { 
+  createBlogController, 
+  getAllBlogController, 
+  getSingleBlogController,
+  getUserBlogsController,
+  updateBlogController, 
+  deleteBlogController, 
+  likeBlogController,
+  unlikeBlogController
+};

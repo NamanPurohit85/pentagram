@@ -7,12 +7,12 @@ const commentSchema = new mongoose.Schema(
       ref: "user",
       required: true,
     },
-    blogId: {
+    post: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "blog",
       required: true,
     },
-    description: {
+    text: {
       type: String,
       required: true,
       minLength: 1,
@@ -21,6 +21,8 @@ const commentSchema = new mongoose.Schema(
   },
   { timestamps: true },
 );
+
+commentSchema.index({ post: 1 });
 
 const commentModel = mongoose.model("comment", commentSchema);
 export default commentModel;

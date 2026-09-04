@@ -1,193 +1,211 @@
-import React, { useState, useEffect, useContext } from 'react';
-import Navbar from '../Components/Navbar';
-import Sidebar from '../Components/Sidebar';
-import { Search, Send } from 'lucide-react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api';
 import { AuthContext } from '../AuthContext';
-
 import { io } from 'socket.io-client';
+import { Send, Mail } from 'lucide-react';
 
 const MessagesPage = () => {
-  const { user: currentUser } = useContext(AuthContext);
-  const [users, setUsers] = useState([]);
+  const { user } = useContext(AuthContext);
+  const [following, setFollowing] = useState([]);
   const [activeChat, setActiveChat] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(true);
+  const [newMessage, setNewMessage] = useState('');
+  const [loadingContacts, setLoadingContacts] = useState(true);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  
+  const messagesEndRef = useRef(null);
+  const socketRef = useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   useEffect(() => {
-    const fetchUsers = async () => {
+    scrollToBottom();
+  }, [messages]);
+
+  useEffect(() => {
+    const fetchContacts = async () => {
       try {
-        const res = await api.get('/user/all');
-        // Filter out the current user from the list
-        const otherUsers = (res.data.users || []).filter(u => u._id !== currentUser?.id);
-        setUsers(otherUsers);
-        if (otherUsers.length > 0) setActiveChat(otherUsers[0]);
+        const res = await api.get(`/auth/${user.id}`);
+        setFollowing(res.data.user.following || []);
       } catch (err) {
-        console.error(err);
+        console.error('Failed to fetch following contacts:', err);
       } finally {
-        setLoading(false);
+        setLoadingContacts(false);
       }
     };
-    fetchUsers();
-  }, [currentUser]);
+    if (user) {
+      fetchContacts();
+    }
+  }, [user]);
 
   useEffect(() => {
-    let socket;
-    if (currentUser) {
-      socket = io('http://localhost:5000', {
-        query: { userId: currentUser.id }
+    if (user) {
+      socketRef.current = io(import.meta.env.VITE_API_URL.replace('/api', ''), {
+        query: { userId: user.id }
       });
 
-      socket.on('newMessage', (newMsg) => {
-        // Only append if the message belongs to the active chat
-        setActiveChat((currentActiveChat) => {
-          if (currentActiveChat && newMsg.sender === currentActiveChat._id) {
-            setMessages((prev) => [...prev, newMsg]);
+      socketRef.current.on('newMessage', (message) => {
+        setActiveChat((currentChat) => {
+          if (currentChat && (message.sender === currentChat._id || message.receiver === currentChat._id)) {
+            setMessages((prev) => [...prev, message]);
           }
-          return currentActiveChat;
+          return currentChat;
         });
       });
     }
+
     return () => {
-      if (socket) socket.close();
+      if (socketRef.current) socketRef.current.close();
     };
-  }, [currentUser]);
+  }, [user]);
 
   useEffect(() => {
     const fetchMessages = async () => {
       if (!activeChat) return;
+      setLoadingMessages(true);
       try {
         const res = await api.get(`/message/${activeChat._id}`);
         setMessages(res.data.messages || []);
       } catch (err) {
-        console.error(err);
+        console.error('Failed to fetch messages:', err);
+      } finally {
+        setLoadingMessages(false);
       }
     };
+
     fetchMessages();
   }, [activeChat]);
 
-  const handleSendMessage = async () => {
-    if (!message.trim() || !activeChat) return;
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !activeChat) return;
+
+    const text = newMessage;
+    setNewMessage('');
+    
     try {
-      const res = await api.post(`/message/send/${activeChat._id}`, { text: message });
+      const res = await api.post(`/message/send/${activeChat._id}`, { text });
       setMessages((prev) => [...prev, res.data.message]);
-      setMessage('');
     } catch (err) {
-      console.error(err);
+      console.error('Failed to send message:', err);
     }
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-primary font-sans antialiased flex flex-col transition-colors duration-300">
-      <Navbar />
-      <main className="max-w-[1200px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8 px-4 py-8 flex-grow w-full">
-        <Sidebar />
-        
-        <div className="lg:col-span-9 flex flex-col gap-6">
-          <div className="bg-surface rounded-2xl border border-divider h-[600px] flex overflow-hidden transition-colors duration-300">
-            
-            {/* Sidebar / Chat List */}
-            <div className="w-1/3 border-r border-divider flex flex-col bg-canvas">
-              <div className="p-4 border-b border-divider">
-                <h2 className="text-xl font-serif font-bold mb-4">Messages</h2>
-                <div className="relative flex items-center">
-                  <Search className="absolute left-3 w-4 h-4 text-secondary" />
-                  <input 
-                    type="text" 
-                    placeholder="Search messages..." 
-                    className="w-full pl-9 pr-4 py-2 border border-divider bg-surface rounded-full text-sm placeholder:text-secondary text-primary focus:ring-1 focus:ring-accent outline-none"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto">
-                {loading ? (
-                  <div className="p-4 text-center text-secondary text-sm">Loading users...</div>
-                ) : users.length > 0 ? (
-                  users.map(u => (
-                    <div 
-                      key={u._id} 
-                      onClick={() => setActiveChat(u)}
-                      className={`flex items-center gap-3 p-4 cursor-pointer border-b border-divider transition-colors ${activeChat?._id === u._id ? 'bg-surface border-l-4 border-l-accent' : 'hover:bg-surface/50 border-l-4 border-l-transparent'}`}
-                    >
-                      <div className="w-12 h-12 rounded-full bg-accent text-white flex items-center justify-center font-bold shrink-0 overflow-hidden border border-divider">
-                        {u.profilePic ? <img src={u.profilePic} alt="profile" className="w-full h-full object-cover" /> : u.name?.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-sm text-primary truncate">{u.name}</span>
-                        </div>
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="text-xs text-secondary truncate">Click to message...</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="p-4 text-center text-secondary text-sm">No users found.</div>
-                )}
-              </div>
+    <div className="flex flex-col w-full h-full p-6">
+      <div className="flex bg-white border border-gray-200 rounded-lg h-[calc(100vh-100px)] min-h-[500px] w-full max-w-5xl mx-auto shadow-sm">
+          {/* Contacts Sidebar */}
+          <div className="w-[280px] border-r border-gray-200 bg-gray-50 flex flex-col shrink-0">
+            <div className="p-4 border-b border-gray-200 bg-white">
+              <h2 className="text-lg font-semibold text-gray-900">Messages</h2>
             </div>
-
-            {/* Main Chat Area */}
-            <div className="w-2/3 flex flex-col bg-surface">
-              {activeChat ? (
-                <>
-              <div className="p-4 border-b border-divider flex items-center justify-between bg-canvas">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-bold overflow-hidden border border-divider">
-                    {activeChat.profilePic ? <img src={activeChat.profilePic} alt="profile" className="w-full h-full object-cover" /> : activeChat.name?.charAt(0).toUpperCase()}
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-primary">{activeChat.name}</h3>
-                    <p className="text-xs text-secondary">Active now</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                {messages.map(msg => {
-                  const isMe = msg.sender === currentUser?.id;
-                  const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                  return (
-                  <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[70%] p-3 rounded-2xl ${isMe ? 'bg-accent text-white rounded-br-sm' : 'bg-canvas border border-divider text-primary rounded-bl-sm'}`}>
-                      <p className="text-sm">{msg.text}</p>
-                      <p className={`text-[10px] mt-1 ${isMe ? 'text-white/70 text-right' : 'text-secondary'}`}>{time}</p>
+            
+            <div className="overflow-y-auto flex-1">
+              {loadingContacts ? (
+                <div className="p-4 text-center text-gray-500 text-sm">Loading...</div>
+              ) : following.length > 0 ? (
+                following.map((contact) => (
+                  <div 
+                    key={contact._id} 
+                    onClick={() => setActiveChat(contact)}
+                    className={`flex items-center gap-3 p-4 cursor-pointer transition-colors border-b border-gray-100 last:border-0 ${activeChat?._id === contact._id ? 'bg-white border-l-4 border-l-blue-600 pl-3' : 'hover:bg-white border-l-4 border-l-transparent'}`}
+                  >
+                    <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center font-semibold shrink-0 text-sm border border-gray-300">
+                      {contact.profilePic ? (
+                         <img src={contact.profilePic} alt={contact.name} className="w-full h-full object-cover" />
+                      ) : (
+                         contact.name?.charAt(0).toUpperCase()
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 truncate text-sm">{contact.name}</div>
                     </div>
                   </div>
-                )})}
-              </div>
-              
-              <div className="p-4 border-t border-divider bg-canvas">
-                <div className="flex items-center gap-2">
-                  <input 
-                    type="text"
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Type a message..."
-                    className="flex-1 border border-divider bg-surface rounded-full px-4 py-2.5 text-sm placeholder:text-secondary focus:ring-1 focus:ring-accent outline-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSendMessage();
-                    }}
-                  />
-                  <button onClick={handleSendMessage} className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer" disabled={!message.trim()}>
-                    <Send className="w-4 h-4 ml-1" />
-                  </button>
-                </div>
-              </div>
-              </>
+                ))
               ) : (
-                <div className="flex-1 flex items-center justify-center text-secondary">
-                  <p>Select a user to start messaging</p>
+                <div className="p-8 text-center text-gray-500 flex flex-col items-center text-sm">
+                  <p className="mb-4">You aren't following anyone yet.</p>
+                  <Link to="/" className="text-blue-600 hover:underline font-medium">Find people</Link>
                 </div>
               )}
             </div>
-            
           </div>
-        </div>
-      </main>
+
+          {/* Chat Window */}
+          <div className="flex-1 flex flex-col relative bg-white min-w-0">
+            {activeChat ? (
+              <>
+                {/* Chat Header */}
+                <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-3 bg-white">
+                  <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 flex items-center justify-center font-semibold shrink-0 text-xs border border-gray-300">
+                    {activeChat.profilePic ? (
+                       <img src={activeChat.profilePic} alt={activeChat.name} className="w-full h-full object-cover" />
+                    ) : (
+                       activeChat.name?.charAt(0).toUpperCase()
+                    )}
+                  </div>
+                  <Link to={`/profile/${activeChat._id}`} className="font-semibold text-gray-900 text-base hover:underline">
+                    {activeChat.name}
+                  </Link>
+                </div>
+
+                {/* Messages List */}
+                <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4 bg-gray-50/50">
+                  {loadingMessages ? (
+                    <div className="text-center text-gray-500 py-4 text-sm">Loading...</div>
+                  ) : messages.length > 0 ? (
+                    messages.map((msg) => {
+                      const isMe = msg.sender === user.id;
+                      return (
+                        <div key={msg._id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`max-w-[70%] px-4 py-2 text-sm shadow-sm ${isMe ? 'bg-blue-600 text-white rounded-l-xl rounded-tr-xl' : 'bg-white border border-gray-200 text-gray-900 rounded-r-xl rounded-tl-xl'}`}>
+                            <p className="whitespace-pre-wrap">{msg.text}</p>
+                            <span className={`text-[10px] mt-1 block ${isMe ? 'text-blue-100 text-right' : 'text-gray-400'}`}>
+                              {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-gray-500 h-full text-sm">
+                      <p>Start a conversation with {activeChat.name}</p>
+                    </div>
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Message Input */}
+                <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-200 bg-white">
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Type a message..."
+                      className="flex-1 bg-gray-100 border border-gray-200 rounded-full px-4 py-2 outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm text-gray-900 transition-all"
+                    />
+                    <button 
+                      type="submit"
+                      disabled={!newMessage.trim()}
+                      className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:hover:bg-blue-600 shrink-0"
+                    >
+                      <Send className="w-4 h-4 ml-0.5" />
+                    </button>
+                  </div>
+                </form>
+              </>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
+                <Mail className="w-12 h-12 mb-4 opacity-50" />
+                <p className="text-sm font-medium">Select a conversation to start messaging</p>
+              </div>
+            )}
+          </div>
+      </div>
     </div>
   );
 };
