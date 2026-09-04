@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../api';
+import api, { API_URL } from '../api';
 import { AuthContext } from '../AuthContext';
 import { io } from 'socket.io-client';
 import { Send, Mail } from 'lucide-react';
@@ -43,7 +43,10 @@ const MessagesPage = () => {
 
   useEffect(() => {
     if (user) {
-      socketRef.current = io(import.meta.env.VITE_API_URL.replace('/api', ''), {
+      const socketUrl = API_URL.startsWith('/')
+        ? window.location.origin
+        : API_URL.replace(/\/api\/?$/, '');
+      socketRef.current = io(socketUrl, {
         query: { userId: user.id }
       });
 

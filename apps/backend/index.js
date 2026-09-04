@@ -9,13 +9,12 @@ import { app, server } from "./src/config/socket.js";
 import cookieParser from "cookie-parser";
 import cors from "cors";
 
-app.use(cors({ origin: true, credentials: true }));
+app.use(cors({
+  origin: process.env.CLIENT_URL || true,
+  credentials: true,
+}));
 app.use(express.json());
 app.use(cookieParser());
-const port = process.env.PORT;
-if (!port) {
-  throw new Error("PORT is not defined in environment variables");
-}
 
 import messageRoute from "./src/routes/messageRoute.js";
 
@@ -27,6 +26,7 @@ app.use("/api/message", messageRoute);
 const start = async () => {
   try {
     await connectDB();
+    const port = process.env.PORT || 5000;
     server.listen(port, () => {
       console.log(`Server Started at port ${port}`);
     });
@@ -34,4 +34,20 @@ const start = async () => {
     console.log("Server failed to start", error);
   }
 };
-start();
+
+const handler = async (req, res) => {
+  try {
+    await connectDB();
+    return app(req, res);
+  } catch (error) {
+    console.error("Request failed to initialize", error);
+    return res.status(500).json({ message: "Service unavailable" });
+  }
+};
+
+export { app };
+export default handler;
+
+if (!process.env.VERCEL) {
+  start();
+}
